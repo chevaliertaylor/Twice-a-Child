@@ -1,0 +1,15 @@
+project_id = "twice-a-child"
+
+[auth]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Set to false for production-grade flows that require email verification.
+enable_confirmations = false
+
+[functions.chat]
+verify_jwt = true
+
+[functions.summarize]
+verify_jwt = true
