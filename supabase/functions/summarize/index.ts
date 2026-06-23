@@ -6,6 +6,7 @@
 // configured cadence.
 import { authedClient, corsHeaders, json } from '../_shared/http.ts';
 import { summarizeConversation, type ChatTurn } from '../_shared/claude.ts';
+import { sendExpoPush } from '../_shared/push.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -56,6 +57,22 @@ Deno.serve(async (req) => {
     .single();
 
   if (saveErr) return json({ error: 'summary_save_failed', detail: saveErr.message }, 500);
+
+  // Notify the child that a fresh summary is available (PRD §7.2).
+  const { data: devices } = await supabase
+    .from('device')
+    .select('expo_push_token')
+    .eq('account_id', userId)
+    .eq('role', 'child');
+
+  await sendExpoPush(
+    (devices ?? []).map((d) => ({
+      to: d.expo_push_token,
+      title: 'New wellbeing summary',
+      body: summary.summary_text,
+      data: { type: 'summary_ready', summaryId: saved.id },
+    })),
+  );
 
   return json({ id: saved.id, createdAt: saved.created_at, summary });
 });

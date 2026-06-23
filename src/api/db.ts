@@ -95,6 +95,25 @@ export async function updateAvatar(
   );
 }
 
+/** Store (or refresh) this device's Expo push token. */
+export async function saveDeviceToken(
+  userId: string,
+  role: Role,
+  token: string,
+  platform: string,
+): Promise<void> {
+  await supabase.from('device').upsert(
+    {
+      account_id: userId,
+      role,
+      expo_push_token: token,
+      platform,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'account_id,expo_push_token' },
+  );
+}
+
 export interface ProfileRow {
   role: Role;
   display_name: string | null;

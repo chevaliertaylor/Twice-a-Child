@@ -43,10 +43,42 @@ supabase functions deploy chat summarize
 ```
 
 ## Endpoints
-Both require a logged-in user's JWT in the `Authorization: Bearer <token>` header.
+`chat` and `summarize` require a logged-in user's JWT in the
+`Authorization: Bearer <token>` header.
 
-- `POST /functions/v1/chat` — `{ conversationId?, message, modality? }` → `{ conversationId, reply, concern }`. Persists the turn and raises an `alert` row on a high-concern signal.
-- `POST /functions/v1/summarize` — `{ conversationId }` → `{ id, createdAt, summary }`. Stores a `summary` row.
+- `POST /functions/v1/chat` — `{ conversationId?, message, modality? }` → `{ conversationId, reply, concern }`. Persists the turn, raises an `alert` row on a high-concern signal, and pushes an urgent notification to the child's device (if urgent alerts are on).
+- `POST /functions/v1/summarize` — `{ conversationId }` → `{ id, createdAt, summary }`. Stores a `summary` row and pushes a "summary ready" notification to the child.
+- `POST /functions/v1/checkin-cron` — **no user JWT**; guarded by the `x-cron-secret` header. Pushes naturally worded check-in prompts to parents who are due one per the child's preferences. Uses the service role to read across accounts.
+
+## Notifications & scheduled check-ins
+Devices register an Expo push token (`device` table). Urgent alerts and summary
+notifications are sent from `chat` / `summarize`. Proactive parent check-ins are
+sent by `checkin-cron`, which should run hourly.
+
+Set the cron secret, then schedule the function (run from SQL or the dashboard):
+
+```bash
+supabase secrets set CRON_SECRET=$(openssl rand -hex 32)
+```
+
+```sql
+-- Hourly, via pg_cron + pg_net (enable both extensions first).
+select cron.schedule(
+  'twice-a-child-checkin',
+  '0 * * * *',
+  $$
+  select net.http_post(
+    url     := 'https://<project-ref>.functions.supabase.co/checkin-cron',
+    headers := jsonb_build_object('x-cron-secret', '<your CRON_SECRET>'),
+    body    := '{}'::jsonb
+  );
+  $$
+);
+```
+
+Notes: check-in windows map to UTC hours for v1 (per-timezone scheduling is a
+later slice). Remote push requires a development/production build — Expo Go does
+not deliver remote notifications.
 
 ## Notes / next steps
 - The app isn't wired to these yet — that needs `@supabase/supabase-js` + Auth in the React Native client and an `EXPO_PUBLIC_SUPABASE_URL` / anon key.

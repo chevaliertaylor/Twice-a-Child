@@ -13,3 +13,7 @@ verify_jwt = true
 
 [functions.summarize]
 verify_jwt = true
+
+# Trusted scheduled job — no user JWT; guarded by the x-cron-secret header.
+[functions.checkin-cron]
+verify_jwt = false

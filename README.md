@@ -40,8 +40,10 @@ the build appears in App Store Connect → TestFlight → App Store review.
 
 Working slice end-to-end: Supabase email/password auth, the full onboarding flow
 (plan → role → avatar → child preferences) persisted to Postgres, a parent chat
-screen wired to the Claude-backed `chat` Edge Function, and a child dashboard that
-reads wellbeing summaries and urgent alerts.
+screen wired to the Claude-backed `chat` Edge Function, a child dashboard reading
+wellbeing summaries and urgent alerts, a Settings screen, Expo push registration,
+push notifications for urgent alerts + summaries, and an hourly check-in cron that
+prompts parents per the child's cadence.
 
-Not yet built (PRD roadmap): voice chat, photo sharing, push notifications for
-alerts/summaries, scheduled check-ins, the settings screen, and IAP billing.
+Not yet built (PRD roadmap): voice chat, photo sharing, per-timezone check-in
+scheduling, and IAP billing.

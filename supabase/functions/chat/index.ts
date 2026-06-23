@@ -5,6 +5,7 @@
 // parent message for urgent concern, and raises an alert on a high signal.
 import { authedClient, corsHeaders, json } from '../_shared/http.ts';
 import { classifyConcern, companionReply, type ChatTurn } from '../_shared/claude.ts';
+import { sendExpoPush } from '../_shared/push.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -77,7 +78,8 @@ Deno.serve(async (req) => {
     content: reply,
   });
 
-  // Raise a real-time alert for high-concern signals (PRD §8.3).
+  // Raise a real-time alert for high-concern signals and push it to the child
+  // (PRD §7.3, §8.3) — respecting the child's urgent-alert preference.
   if (concern.concern_level === 'high') {
     await supabase.from('alert').insert({
       account_id: userId,
@@ -86,6 +88,29 @@ Deno.serve(async (req) => {
       severity: 'high',
       description: concern.rationale,
     });
+
+    const { data: prefs } = await supabase
+      .from('preferences')
+      .select('urgent_alerts')
+      .eq('account_id', userId)
+      .maybeSingle();
+
+    if (prefs?.urgent_alerts !== false) {
+      const { data: devices } = await supabase
+        .from('device')
+        .select('expo_push_token')
+        .eq('account_id', userId)
+        .eq('role', 'child');
+
+      await sendExpoPush(
+        (devices ?? []).map((d) => ({
+          to: d.expo_push_token,
+          title: 'Check on your parent',
+          body: concern.rationale,
+          data: { type: 'urgent_alert', conversationId },
+        })),
+      );
+    }
   }
 
   return json({ conversationId, reply, concern });

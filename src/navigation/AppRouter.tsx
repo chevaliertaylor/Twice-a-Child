@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
 import { useSession } from '../state/SessionContext';
+import { usePushRegistration } from '../hooks/usePushRegistration';
 import { OnboardingFlow } from './OnboardingFlow';
 import { ParentLandingScreen } from '../screens/ParentLandingScreen';
 import { ChildDashboardScreen } from '../screens/ChildDashboardScreen';
@@ -17,6 +18,8 @@ type AuthedView = 'home' | 'settings';
 export function AppRouter() {
   const { session, deviceRole, loading } = useSession();
   const [view, setView] = useState<AuthedView>('home');
+
+  usePushRegistration(session, deviceRole);
 
   if (loading) {
     return (
