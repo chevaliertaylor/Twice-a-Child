@@ -19,8 +19,9 @@ import {
 } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Speech from 'expo-speech';
+import * as ImagePicker from 'expo-image-picker';
 import { useSession } from '../state/SessionContext';
-import { fetchProfile, sendChat, transcribeAudio } from '../api/db';
+import { fetchProfile, sendChat, transcribeAudio, uploadPhoto } from '../api/db';
 import { PRESET_AVATARS } from '../types';
 import { colors, radius, spacing } from '../theme';
 
@@ -92,6 +93,27 @@ export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => 
     void submitMessage(text, 'text');
   };
 
+  const handlePhoto = async () => {
+    if (!session) return;
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        base64: true,
+        quality: 0.6,
+      });
+      if (res.canceled) return;
+      const asset = res.assets[0];
+      if (!asset?.base64) return;
+      await uploadPhoto(session.user.id, 'parent', asset.base64);
+      setMessages((m) => [
+        ...m,
+        { id: `ph-${Date.now()}`, sender: 'parent', content: '📷 Photo sent to your family' },
+      ]);
+    } catch {
+      // ignore (cancelled / network)
+    }
+  };
+
   const startRecording = async () => {
     try {
       const perm = await requestRecordingPermissionsAsync();
@@ -131,6 +153,14 @@ export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Send a photo to your family"
+            onPress={handlePhoto}
+            style={styles.photoButton}
+          >
+            <Text style={styles.settingsIcon}>📷</Text>
+          </Pressable>
           <View style={styles.avatarBubble}>
             <Text style={styles.avatarEmoji}>{avatarEmoji}</Text>
           </View>
@@ -219,6 +249,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { alignItems: 'center', paddingTop: spacing.md },
   settingsButton: { position: 'absolute', right: spacing.md, top: spacing.md, padding: spacing.sm },
+  photoButton: { position: 'absolute', left: spacing.md, top: spacing.md, padding: spacing.sm },
   settingsIcon: { fontSize: 24, color: colors.textSecondary },
   avatarBubble: {
     width: 96,

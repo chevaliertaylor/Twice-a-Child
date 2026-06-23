@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -9,21 +10,34 @@ import {
   Text,
   View,
 } from 'react-native';
-import { fetchLatestSummary, fetchOpenAlerts, type AlertRow, type SummaryRow } from '../api/db';
+import {
+  fetchLatestSummary,
+  fetchOpenAlerts,
+  fetchPhotos,
+  type AlertRow,
+  type PhotoItem,
+  type SummaryRow,
+} from '../api/db';
 import { colors, radius, spacing } from '../theme';
 
-/** Child dashboard (PRD §7): wellbeing summary, urgent alerts, stat tiles. */
+/** Child dashboard (PRD §7): wellbeing summary, urgent alerts, stat tiles, photos. */
 export function ChildDashboardScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [summary, setSummary] = useState<SummaryRow | null>(null);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [s, a] = await Promise.all([fetchLatestSummary(), fetchOpenAlerts()]);
+      const [s, a, p] = await Promise.all([
+        fetchLatestSummary(),
+        fetchOpenAlerts(),
+        fetchPhotos(),
+      ]);
       setSummary(s);
       setAlerts(a);
+      setPhotos(p);
     } catch {
       // Network/backend not configured yet — leave placeholders.
     }
@@ -98,6 +112,19 @@ export function ChildDashboardScreen({ onOpenSettings }: { onOpenSettings: () =>
             </View>
           )}
         </View>
+
+        {photos.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>Recent photos</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
+              {photos.map((p) =>
+                p.url ? (
+                  <Image key={p.id} source={{ uri: p.url }} style={styles.photo} />
+                ) : null,
+              )}
+            </ScrollView>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -164,4 +191,12 @@ const styles = StyleSheet.create({
   summaryText: { fontSize: 16, color: colors.textPrimary, lineHeight: 22 },
   highlights: { gap: 2 },
   highlight: { fontSize: 15, color: colors.textSecondary },
+  photoRow: { flexDirection: 'row' },
+  photo: {
+    width: 120,
+    height: 120,
+    borderRadius: radius.md,
+    marginRight: spacing.sm,
+    backgroundColor: colors.border,
+  },
 });

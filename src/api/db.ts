@@ -114,6 +114,54 @@ export async function saveDeviceToken(
   );
 }
 
+function base64ToUint8Array(b64: string): Uint8Array {
+  const binary = globalThis.atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** Upload a JPEG (base64) to the private photos bucket and record it. */
+export async function uploadPhoto(
+  userId: string,
+  role: Role,
+  base64: string,
+  caption?: string,
+): Promise<void> {
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+  const { error } = await supabase.storage
+    .from('photos')
+    .upload(path, base64ToUint8Array(base64), { contentType: 'image/jpeg', upsert: false });
+  if (error) throw error;
+  await supabase
+    .from('photo')
+    .insert({ account_id: userId, sender: role, storage_path: path, caption: caption ?? null });
+}
+
+export interface PhotoItem {
+  id: string;
+  url: string | null;
+  caption: string | null;
+  created_at: string;
+}
+
+export async function fetchPhotos(): Promise<PhotoItem[]> {
+  const { data } = await supabase
+    .from('photo')
+    .select('id, storage_path, caption, created_at')
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (!data) return [];
+  return Promise.all(
+    data.map(async (r) => {
+      const { data: signed } = await supabase.storage
+        .from('photos')
+        .createSignedUrl(r.storage_path, 3600);
+      return { id: r.id, url: signed?.signedUrl ?? null, caption: r.caption, created_at: r.created_at };
+    }),
+  );
+}
+
 export interface ProfileRow {
   role: Role;
   display_name: string | null;

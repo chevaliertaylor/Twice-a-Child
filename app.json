@@ -29,6 +29,10 @@
       [
         "expo-audio",
         { "microphonePermission": "Allow Twice a Child to record your voice messages." }
+      ],
+      [
+        "expo-image-picker",
+        { "photosPermission": "Allow Twice a Child to share photos with your family." }
       ]
     ],
     "extra": {
