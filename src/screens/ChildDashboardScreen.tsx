@@ -9,13 +9,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSession } from '../state/SessionContext';
 import { fetchLatestSummary, fetchOpenAlerts, type AlertRow, type SummaryRow } from '../api/db';
 import { colors, radius, spacing } from '../theme';
 
 /** Child dashboard (PRD §7): wellbeing summary, urgent alerts, stat tiles. */
-export function ChildDashboardScreen() {
-  const { signOut } = useSession();
+export function ChildDashboardScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [summary, setSummary] = useState<SummaryRow | null>(null);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,8 +55,8 @@ export function ChildDashboardScreen() {
       >
         <View style={styles.titleRow}>
           <Text style={styles.title}>Dashboard</Text>
-          <Pressable accessibilityRole="button" onPress={signOut}>
-            <Text style={styles.signOut}>Sign out</Text>
+          <Pressable accessibilityRole="button" onPress={onOpenSettings}>
+            <Text style={styles.signOut}>Settings</Text>
           </Pressable>
         </View>
 

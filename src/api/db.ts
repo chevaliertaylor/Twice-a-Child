@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabase';
-import type { ConcernLevel, OnboardingData, Role } from '../types';
+import type {
+  AvatarSelection,
+  ChildPreferences,
+  ConcernLevel,
+  OnboardingData,
+  Role,
+} from '../types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -40,6 +46,53 @@ export async function saveOnboarding(userId: string, data: OnboardingData): Prom
       updated_at: new Date().toISOString(),
     });
   }
+}
+
+/** Load the child's saved preferences. */
+export async function fetchPreferences(userId: string): Promise<ChildPreferences | null> {
+  const { data } = await supabase
+    .from('preferences')
+    .select(
+      'summary_frequency, summary_time, checkin_frequency, checkin_window, urgent_alerts',
+    )
+    .eq('account_id', userId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    summaryFrequency: data.summary_frequency,
+    summaryTime: data.summary_time,
+    checkInFrequency: data.checkin_frequency,
+    checkInWindow: data.checkin_window,
+    urgentAlerts: data.urgent_alerts,
+  };
+}
+
+export async function savePreferences(userId: string, p: ChildPreferences): Promise<void> {
+  await supabase.from('preferences').upsert({
+    account_id: userId,
+    summary_frequency: p.summaryFrequency,
+    summary_time: p.summaryTime,
+    checkin_frequency: p.checkInFrequency,
+    checkin_window: p.checkInWindow,
+    urgent_alerts: p.urgentAlerts,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+export async function updateAvatar(
+  userId: string,
+  role: Role,
+  avatar: AvatarSelection,
+): Promise<void> {
+  await supabase.from('profile').upsert(
+    {
+      account_id: userId,
+      role,
+      avatar_kind: avatar.kind,
+      avatar_ref: avatar.kind === 'preset' ? avatar.id : avatar.uri,
+    },
+    { onConflict: 'account_id,role' },
+  );
 }
 
 export interface ProfileRow {

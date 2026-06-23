@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { Segmented } from '../components/Segmented';
 import { useOnboarding } from '../state/OnboardingContext';
 import type { Cadence, ChildPreferences } from '../types';
-import { colors, radius, spacing } from '../theme';
+import { colors, spacing } from '../theme';
 
 interface Props {
   onNext: () => void;
@@ -22,37 +23,6 @@ const WINDOW_OPTIONS: { value: ChildPreferences['checkInWindow']; label: string 
   { value: 'midday', label: 'Midday' },
   { value: 'evening', label: 'Evening' },
 ];
-
-function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <View style={styles.segment}>
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <Pressable
-            key={opt.value}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(opt.value)}
-            style={[styles.segmentItem, active && styles.segmentItemActive]}
-          >
-            <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]}>
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
 
 export function ChildPreferencesScreen({ onNext, onBack }: Props) {
   const { update } = useOnboarding();
@@ -136,30 +106,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.xs,
-    gap: spacing.xs,
-  },
-  segmentItem: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md - 2,
-    alignItems: 'center',
-  },
-  segmentItemActive: {
-    backgroundColor: colors.accent,
-  },
-  segmentLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  segmentLabelActive: {
-    color: colors.surface,
   },
   row: {
     flexDirection: 'row',

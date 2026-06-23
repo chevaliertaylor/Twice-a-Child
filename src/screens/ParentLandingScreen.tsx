@@ -27,7 +27,7 @@ interface Bubble {
  * chat with the companion. Wired to the `chat` Edge Function. Voice input is a
  * later slice — text only for now.
  */
-export function ParentLandingScreen() {
+export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { session } = useSession();
   const [avatarEmoji, setAvatarEmoji] = useState('🙂');
   const [messages, setMessages] = useState<Bubble[]>([
@@ -85,6 +85,14 @@ export function ParentLandingScreen() {
           <View style={styles.avatarBubble}>
             <Text style={styles.avatarEmoji}>{avatarEmoji}</Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            onPress={onOpenSettings}
+            style={styles.settingsButton}
+          >
+            <Text style={styles.settingsIcon}>⚙︎</Text>
+          </Pressable>
         </View>
 
         <FlatList
@@ -141,6 +149,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   header: { alignItems: 'center', paddingTop: spacing.md },
+  settingsButton: { position: 'absolute', right: spacing.md, top: spacing.md, padding: spacing.sm },
+  settingsIcon: { fontSize: 24, color: colors.textSecondary },
   avatarBubble: {
     width: 96,
     height: 96,

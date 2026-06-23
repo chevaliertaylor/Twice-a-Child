@@ -1,16 +1,22 @@
+import { useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
 import { useSession } from '../state/SessionContext';
 import { OnboardingFlow } from './OnboardingFlow';
 import { ParentLandingScreen } from '../screens/ParentLandingScreen';
 import { ChildDashboardScreen } from '../screens/ChildDashboardScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { colors } from '../theme';
+
+type AuthedView = 'home' | 'settings';
 
 /**
  * Top-level router. A returning user with a session and a saved device role goes
- * straight to their home screen; everyone else runs onboarding.
+ * straight to their home screen; everyone else runs onboarding. Within the
+ * authenticated area, a small view toggle covers Settings.
  */
 export function AppRouter() {
   const { session, deviceRole, loading } = useSession();
+  const [view, setView] = useState<AuthedView>('home');
 
   if (loading) {
     return (
@@ -21,7 +27,15 @@ export function AppRouter() {
   }
 
   if (session && deviceRole) {
-    return deviceRole === 'parent' ? <ParentLandingScreen /> : <ChildDashboardScreen />;
+    if (view === 'settings') {
+      return <SettingsScreen onBack={() => setView('home')} />;
+    }
+    const openSettings = () => setView('settings');
+    return deviceRole === 'parent' ? (
+      <ParentLandingScreen onOpenSettings={openSettings} />
+    ) : (
+      <ChildDashboardScreen onOpenSettings={openSettings} />
+    );
   }
 
   return <OnboardingFlow />;
