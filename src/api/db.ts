@@ -67,6 +67,11 @@ export async function fetchPreferences(userId: string): Promise<ChildPreferences
   };
 }
 
+/** Record the parent device's IANA timezone so check-ins fire in local time. */
+export async function updateTimezone(userId: string, timezone: string): Promise<void> {
+  await supabase.from('preferences').update({ timezone }).eq('account_id', userId);
+}
+
 export async function savePreferences(userId: string, p: ChildPreferences): Promise<void> {
   await supabase.from('preferences').upsert({
     account_id: userId,

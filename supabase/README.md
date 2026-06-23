@@ -76,9 +76,10 @@ select cron.schedule(
 );
 ```
 
-Notes: check-in windows map to UTC hours for v1 (per-timezone scheduling is a
-later slice). Remote push requires a development/production build — Expo Go does
-not deliver remote notifications.
+Notes: check-in windows fire in the parent's local time — the parent device
+reports its IANA timezone (`preferences.timezone`), and the cron resolves each
+window hour in that zone. Remote push requires a development/production build —
+Expo Go does not deliver remote notifications.
 
 ## Notes / next steps
 - The app isn't wired to these yet — that needs `@supabase/supabase-js` + Auth in the React Native client and an `EXPO_PUBLIC_SUPABASE_URL` / anon key.

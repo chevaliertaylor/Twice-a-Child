@@ -21,7 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import { useSession } from '../state/SessionContext';
-import { fetchProfile, sendChat, transcribeAudio, uploadPhoto } from '../api/db';
+import { fetchProfile, sendChat, transcribeAudio, updateTimezone, uploadPhoto } from '../api/db';
 import { PRESET_AVATARS } from '../types';
 import { colors, radius, spacing } from '../theme';
 
@@ -60,6 +60,9 @@ export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => 
         if (preset) setAvatarEmoji(preset.emoji);
       }
     });
+    // Report this device's timezone so check-ins fire in the parent's local time.
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) void updateTimezone(session.user.id, tz);
   }, [session]);
 
   const submitMessage = async (text: string, modality: 'text' | 'voice') => {

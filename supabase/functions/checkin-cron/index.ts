@@ -25,13 +25,28 @@ const PROMPTS: Record<string, string> = {
   evening: 'Hi! How was your day today?',
 };
 
+/** Hour of day (0–23) for `now` in the given IANA timezone. */
+function localHour(now: Date, timezone: string): number {
+  try {
+    const hour = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+    }).format(now);
+    return Number(hour) % 24;
+  } catch {
+    return now.getUTCHours();
+  }
+}
+
 function isDue(
   now: Date,
   frequency: string,
   windowName: string,
+  timezone: string,
   lastCheckinAt: string | null,
 ): boolean {
-  if (now.getUTCHours() !== (WINDOW_HOUR[windowName] ?? 9)) return false;
+  if (localHour(now, timezone) !== (WINDOW_HOUR[windowName] ?? 9)) return false;
   if (!lastCheckinAt) return true;
   const gap = MIN_GAP_MS[frequency] ?? DAY_MS;
   return now.getTime() - new Date(lastCheckinAt).getTime() >= gap;
@@ -50,12 +65,14 @@ Deno.serve(async (req) => {
 
   const { data: prefs, error } = await admin
     .from('preferences')
-    .select('account_id, checkin_frequency, checkin_window, last_checkin_at');
+    .select('account_id, checkin_frequency, checkin_window, timezone, last_checkin_at');
   if (error) return new Response(error.message, { status: 500 });
 
   let sent = 0;
   for (const p of prefs ?? []) {
-    if (!isDue(now, p.checkin_frequency, p.checkin_window, p.last_checkin_at)) continue;
+    if (!isDue(now, p.checkin_frequency, p.checkin_window, p.timezone ?? 'UTC', p.last_checkin_at)) {
+      continue;
+    }
 
     const { data: devices } = await admin
       .from('device')
