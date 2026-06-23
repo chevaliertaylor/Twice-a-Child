@@ -44,3 +44,6 @@ yarn-error.*
 supabase/.branches
 supabase/.temp
 supabase/.env
+
+# app env
+.env

@@ -9,10 +9,15 @@ for the full product spec.
 
 ```bash
 npm install
+cp .env.example .env   # add your EXPO_PUBLIC_SUPABASE_URL + ANON_KEY
 npm run ios      # iOS simulator (macOS) or Expo Go
 npm run android  # Android emulator or Expo Go
 npm run web      # browser preview
 ```
+
+The app boots without Supabase env set (for UI review), but auth and data calls
+need a Supabase project — see [`supabase/README.md`](supabase/README.md) to stand
+up the backend.
 
 ## Deploying to the App Store (EAS)
 
@@ -33,5 +38,10 @@ the build appears in App Store Connect → TestFlight → App Store review.
 
 ## Project status
 
-Early scaffold: account/role entry screen in place. Onboarding, chat, dashboard,
-and backend are not yet implemented (see the PRD roadmap).
+Working slice end-to-end: Supabase email/password auth, the full onboarding flow
+(plan → role → avatar → child preferences) persisted to Postgres, a parent chat
+screen wired to the Claude-backed `chat` Edge Function, and a child dashboard that
+reads wellbeing summaries and urgent alerts.
+
+Not yet built (PRD roadmap): voice chat, photo sharing, push notifications for
+alerts/summaries, scheduled check-ins, the settings screen, and IAP billing.

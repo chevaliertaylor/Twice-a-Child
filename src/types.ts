@@ -6,6 +6,8 @@ export type PlanChoice = 'trial' | 'subscribe';
 
 export type Cadence = 'daily' | 'few_days' | 'weekly';
 
+export type ConcernLevel = 'none' | 'low' | 'medium' | 'high';
+
 /** An avatar is either a generated likeness from a photo, or a preset pick. */
 export type AvatarSelection =
   | { kind: 'photo'; uri: string }

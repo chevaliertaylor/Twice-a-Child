@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useOnboarding } from '../state/OnboardingContext';
+import { useSession } from '../state/SessionContext';
 import { colors, radius, spacing } from '../theme';
 
 interface Props {
@@ -14,24 +15,56 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function SignUpScreen({ onNext, onBack }: Props) {
   const { update } = useOnboarding();
+  const { signUp, signIn } = useSession();
+  const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const emailValid = EMAIL_RE.test(email);
   const passwordValid = password.length >= 8;
-  const canContinue = emailValid && passwordValid;
+  const canSubmit = emailValid && passwordValid && !busy;
 
-  const handleContinue = () => {
+  const handleSubmit = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: authError } =
+      mode === 'signup' ? await signUp(email, password) : await signIn(email, password);
+    setBusy(false);
+    if (authError) {
+      setError(authError);
+      return;
+    }
     update({ email, password });
     onNext();
   };
 
   return (
     <ScreenContainer
-      title="Create your account"
+      title={mode === 'signup' ? 'Create your account' : 'Welcome back'}
       subtitle="One account works on both your phone and your parent's."
       onBack={onBack}
-      footer={<PrimaryButton label="Continue" onPress={handleContinue} disabled={!canContinue} />}
+      footer={
+        <>
+          <PrimaryButton
+            label={busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          />
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setMode(mode === 'signup' ? 'login' : 'signup');
+              setError(null);
+            }}
+          >
+            <Text style={styles.toggle}>
+              {mode === 'signup' ? 'I already have an account' : 'Create a new account'}
+            </Text>
+          </Pressable>
+        </>
+      }
     >
       <View style={styles.field}>
         <Text style={styles.label}>Email</Text>
@@ -63,6 +96,8 @@ export function SignUpScreen({ onNext, onBack }: Props) {
           <Text style={styles.hint}>Use at least 8 characters.</Text>
         )}
       </View>
+
+      {error && <Text style={styles.error}>{error}</Text>}
     </ScreenContainer>
   );
 }
@@ -89,5 +124,16 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 14,
     color: colors.danger,
+  },
+  error: {
+    fontSize: 15,
+    color: colors.danger,
+  },
+  toggle: {
+    fontSize: 16,
+    color: colors.accent,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
   },
 });
