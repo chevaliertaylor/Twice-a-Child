@@ -155,6 +155,15 @@ export async function sendChat(args: {
   return data;
 }
 
+/** Transcribe a recorded voice message via the `transcribe` Edge Function. */
+export async function transcribeAudio(audioBase64: string, mimeType: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{ text: string }>('transcribe', {
+    body: { audioBase64, mimeType },
+  });
+  if (error) throw error;
+  return data?.text ?? '';
+}
+
 export interface SummaryRow {
   id: string;
   summary_text: string;

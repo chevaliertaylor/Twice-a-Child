@@ -11,8 +11,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from 'expo-audio';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Speech from 'expo-speech';
 import { useSession } from '../state/SessionContext';
-import { fetchProfile, sendChat } from '../api/db';
+import { fetchProfile, sendChat, transcribeAudio } from '../api/db';
 import { PRESET_AVATARS } from '../types';
 import { colors, radius, spacing } from '../theme';
 
@@ -24,8 +32,9 @@ interface Bubble {
 
 /**
  * Parent landing page (PRD §6): the child's avatar greets the parent, who can
- * chat with the companion. Wired to the `chat` Edge Function. Voice input is a
- * later slice — text only for now.
+ * chat with the companion by text or voice. Wired to the `chat` Edge Function;
+ * voice is recorded, transcribed via `transcribe`, then sent. Companion replies
+ * are read aloud.
  */
 export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { session } = useSession();
@@ -35,8 +44,11 @@ export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => 
   ]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const conversationId = useRef<string | undefined>(undefined);
   const listRef = useRef<FlatList<Bubble>>(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   useEffect(() => {
     if (!session) return;
@@ -49,17 +61,15 @@ export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => 
     });
   }, [session]);
 
-  const send = async () => {
-    const text = input.trim();
+  const submitMessage = async (text: string, modality: 'text' | 'voice') => {
     if (!text || sending) return;
-    setInput('');
-    const parentBubble: Bubble = { id: `p-${Date.now()}`, sender: 'parent', content: text };
-    setMessages((m) => [...m, parentBubble]);
+    setMessages((m) => [...m, { id: `p-${Date.now()}`, sender: 'parent', content: text }]);
     setSending(true);
     try {
-      const res = await sendChat({ conversationId: conversationId.current, message: text });
+      const res = await sendChat({ conversationId: conversationId.current, message: text, modality });
       conversationId.current = res.conversationId;
       setMessages((m) => [...m, { id: `c-${Date.now()}`, sender: 'companion', content: res.reply }]);
+      Speech.speak(res.reply);
     } catch {
       setMessages((m) => [
         ...m,
@@ -73,6 +83,45 @@ export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => 
       setSending(false);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     }
+  };
+
+  const send = () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput('');
+    void submitMessage(text, 'text');
+  };
+
+  const startRecording = async () => {
+    try {
+      const perm = await requestRecordingPermissionsAsync();
+      if (!perm.granted) return;
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecording(true);
+    } catch {
+      setRecording(false);
+    }
+  };
+
+  const stopRecording = async () => {
+    setRecording(false);
+    setTranscribing(true);
+    let transcript = '';
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      if (uri) {
+        const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+        transcript = (await transcribeAudio(base64, 'audio/m4a')).trim();
+      }
+    } catch {
+      transcript = '';
+    } finally {
+      setTranscribing(false);
+    }
+    if (transcript) await submitMessage(transcript, 'voice');
   };
 
   return (
@@ -114,12 +163,32 @@ export function ParentLandingScreen({ onOpenSettings }: { onOpenSettings: () => 
         />
 
         <View style={styles.composer}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={recording ? 'Stop recording' : 'Record a voice message'}
+            onPress={recording ? stopRecording : startRecording}
+            disabled={sending || transcribing}
+            style={({ pressed }) => [
+              styles.micButton,
+              recording && styles.micRecording,
+              (sending || transcribing) && styles.sendDisabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            {transcribing ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : (
+              <Text style={styles.micIcon}>{recording ? '■' : '🎤'}</Text>
+            )}
+          </Pressable>
+
           <TextInput
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="Tap to type…"
+            placeholder={recording ? 'Listening…' : 'Tap to type…'}
             placeholderTextColor={colors.textMuted}
+            editable={!recording}
             multiline
             onSubmitEditing={send}
           />
@@ -204,5 +273,17 @@ const styles = StyleSheet.create({
   },
   sendDisabled: { opacity: 0.4 },
   sendLabel: { color: colors.surface, fontSize: 17, fontWeight: '600' },
+  micButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micRecording: { backgroundColor: '#FBE9EB', borderColor: colors.danger },
+  micIcon: { fontSize: 20 },
   pressed: { opacity: 0.85 },
 });
