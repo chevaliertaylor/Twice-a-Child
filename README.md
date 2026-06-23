@@ -38,12 +38,29 @@ the build appears in App Store Connect → TestFlight → App Store review.
 
 ## Project status
 
-Working slice end-to-end: Supabase email/password auth, the full onboarding flow
-(plan → role → avatar → child preferences) persisted to Postgres, a parent chat
-screen wired to the Claude-backed `chat` Edge Function, a child dashboard reading
-wellbeing summaries and urgent alerts, a Settings screen, Expo push registration,
-push notifications for urgent alerts + summaries, and an hourly check-in cron that
-prompts parents per the child's cadence.
+The full PRD roadmap is implemented end-to-end:
 
-Not yet built (PRD roadmap): voice chat, photo sharing, per-timezone check-in
-scheduling, and IAP billing.
+- Supabase email/password auth (shared account) + per-device role
+- Onboarding (plan → role → avatar → child preferences) persisted to Postgres
+- Parent companion chat — text **and** voice (record → Whisper transcription →
+  Claude reply, read aloud) wired to the `chat` Edge Function
+- Photo sharing (parent → child) via a private Storage bucket
+- Child dashboard: wellbeing summaries, urgent alerts, recent photos
+- Settings screen (edit cadence/alerts, sign out)
+- Push notifications for urgent alerts + summaries; hourly check-in cron that
+  prompts parents in their **local timezone**
+- RevenueCat subscription paywall ($5.99/mo, 7-day trial); disabled when no key
+
+Everything type-checks (`npx tsc --noEmit`). It has **not** been run against a
+live backend/device — see the caveats below before shipping.
+
+## Validate it live (not yet done)
+
+1. Create a Supabase project; set `EXPO_PUBLIC_SUPABASE_*` in `.env`; apply
+   `supabase/migrations/*` and deploy the functions (see `supabase/README.md`).
+2. Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (STT), and `CRON_SECRET` as Supabase
+   secrets; schedule `checkin-cron`.
+3. Configure RevenueCat (entitlement + product) and set the `EXPO_PUBLIC_REVENUECAT_*` keys.
+4. Run `npx expo install --check` to align native module versions, then build a
+   dev client (`eas build --profile development`) — voice, push, and billing do
+   not work in Expo Go.

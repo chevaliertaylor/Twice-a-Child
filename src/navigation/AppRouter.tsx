@@ -6,6 +6,7 @@ import { OnboardingFlow } from './OnboardingFlow';
 import { ParentLandingScreen } from '../screens/ParentLandingScreen';
 import { ChildDashboardScreen } from '../screens/ChildDashboardScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { PaywallScreen } from '../screens/PaywallScreen';
 import { colors } from '../theme';
 
 type AuthedView = 'home' | 'settings';
@@ -16,7 +17,7 @@ type AuthedView = 'home' | 'settings';
  * authenticated area, a small view toggle covers Settings.
  */
 export function AppRouter() {
-  const { session, deviceRole, loading } = useSession();
+  const { session, deviceRole, entitled, loading } = useSession();
   const [view, setView] = useState<AuthedView>('home');
 
   usePushRegistration(session, deviceRole);
@@ -27,6 +28,11 @@ export function AppRouter() {
         <ActivityIndicator color={colors.accent} size="large" />
       </SafeAreaView>
     );
+  }
+
+  // A signed-in user without an active subscription sees the paywall.
+  if (session && !entitled) {
+    return <PaywallScreen />;
   }
 
   if (session && deviceRole) {
